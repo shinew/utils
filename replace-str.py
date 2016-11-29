@@ -29,10 +29,14 @@ def replace(old, new, data):
 
 def replace_file_contents(file_name, old, new):
     contents = ''
+    new_contents = ''
     with open(file_name, 'r') as f:
-        contents = replace(old, new, f.read())
+        contents = f.read()
+        new_contents = replace(old, new, contents)
+    if contents == new_contents:
+        return
     with open(file_name, 'w') as f:
-        f.write(contents)
+        f.write(new_contents)
 
 def rename(path, old, new):
     new_path = replace(old, new, path)

@@ -5,7 +5,7 @@ import re
 import shutil
 
 DOC = '''Replaces all instances of old string with new string in the given directory.
-Replaces in directory/file names as well as their contents, except for the root directory.
+Replaces in directory/file names as well as their contents.
 
 Example:
 python replace-str.py . --old=bar --new=foo
@@ -44,25 +44,38 @@ def rename(path, old, new):
         if os.path.exists(new_path):
             raise Exception('{} already exists'.format(new_path))
         shutil.move(path, new_path)
+    return new_path
 
 def get_appended_children(path):
     return map(lambda c: os.path.join(path, c), os.listdir(path))
 
-def replace_in_dir(path, old, new):
+def replace_in_dir_shallow(path, old, new):
     if not os.path.isdir(path):
-        raise Exception('starting is not a directory')
+        raise Exception('{} is not a directory'.format(path))
 
     children = get_appended_children(path)
 
     map(lambda c: replace_file_contents(c, old, new),
         filter(lambda c: os.path.isfile(c), children))
 
-    map(lambda c: rename(c, old, new), children)
+    renamed_children = map(lambda c: rename(c, old, new), children)
 
-    children = get_appended_children(path)
+    return filter(lambda c: os.path.isdir(c), renamed_children)
 
-    map(lambda c: replace_in_dir(c, old, new),
-        filter(lambda c: os.path.isdir(c), children))
+def replace_in_dir(path, old, new):
+    if not os.path.isdir(path):
+        raise Exception('starting is not a directory'.format(path))
+
+    abspath = os.path.abspath(path)
+    head, tail = os.path.split(abspath)
+    os.chdir(head)
+    path = rename(tail, old, new)
+
+    stack = [path]
+    while stack:
+        path = stack.pop()
+        new_dirs = replace_in_dir_shallow(path, old, new)
+        stack.extend(new_dirs)
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser(description=DOC)
